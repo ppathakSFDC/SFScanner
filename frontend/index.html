@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ProWorker — Salesforce Best Practice Analyzer</title>
+    <style>
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      html, body { height: 100%; background: var(--bg); color: var(--text); overscroll-behavior: none; }
+      body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+      #root { height: 100%; }
+
+      /* ── Dark theme (default) — deep navy blue ───────────── */
+      :root {
+        --bg:           #0b1628;
+        --surface:      #102040;
+        --surface-hi:   #162a4f;
+        --border:       #1e3a5c;
+        --border-hi:    #2a4f7a;
+        --text:         #f0f6ff;
+        --text-mid:     #8ba8c8;
+        --text-lo:      #4a7abf;
+        --text-dim:     #1a2d47;
+        /* navy pages (OrgScan, AgentChat) */
+        --nav-bg:       #0b1628;
+        --nav-surface:  #102040;
+        --nav-card:     #152545;
+        --nav-border:   rgba(255,255,255,0.07);
+        /* topbar (always dark for branding) */
+        --topbar-bg:       #071120;
+        --topbar-search:   #122540;
+        --topbar-in-border: rgba(255,255,255,0.1);
+        /* sidebar */
+        --sidebar-bg:           #0c1a30;
+        --sidebar-border:       rgba(255,255,255,0.06);
+        --sidebar-text:         rgba(255,255,255,0.55);
+        --sidebar-text-hover:   rgba(255,255,255,0.85);
+        --sidebar-text-active:  #ffffff;
+        --sidebar-active-bg:    rgba(59,130,246,0.25);
+        --sidebar-hover-bg:     rgba(255,255,255,0.06);
+        /* inputs */
+        --input-bg:     #0b1628;
+        --input-border: #1e3a5c;
+        --input-color:  #f0f6ff;
+        /* scrollbar */
+        --scroll-thumb:       #2a4f7a;
+        --scroll-thumb-hover: #4a7abf;
+      }
+
+      /* ── Light theme ──────────────────────────────────────── */
+      [data-theme="light"] {
+        --bg:           #f8fafc;
+        --surface:      #ffffff;
+        --surface-hi:   #f1f5f9;
+        --border:       #e2e8f0;
+        --border-hi:    #cbd5e1;
+        --text:         #0f172a;
+        --text-mid:     #475569;
+        --text-lo:      #94a3b8;
+        --text-dim:     #e2e8f0;
+        /* navy pages */
+        --nav-bg:       #ffffff;
+        --nav-surface:  #f8fafc;
+        --nav-card:     #f1f5f9;
+        --nav-border:   rgba(0,0,0,0.08);
+        /* topbar stays dark */
+        --topbar-bg:       #0f1f3d;
+        --topbar-search:   #1e293b;
+        --topbar-in-border: rgba(255,255,255,0.15);
+        /* sidebar goes light */
+        --sidebar-bg:           #ffffff;
+        --sidebar-border:       rgba(0,0,0,0.08);
+        --sidebar-text:         #64748b;
+        --sidebar-text-hover:   #334155;
+        --sidebar-text-active:  #0891b2;
+        --sidebar-active-bg:    rgba(6,182,212,0.10);
+        --sidebar-hover-bg:     rgba(0,0,0,0.04);
+        /* inputs */
+        --input-bg:     #ffffff;
+        --input-border: #e2e8f0;
+        --input-color:  #0f172a;
+        /* scrollbar */
+        --scroll-thumb:       #cbd5e1;
+        --scroll-thumb-hover: #94a3b8;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
