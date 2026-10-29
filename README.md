@@ -82,3 +82,6 @@ sf-scanner/
   - Current code snippet
   - Suggested fix (diff format)
   - Fix effort estimate
+ 
+  ## Launch App
+  - Click on launch.command to launch the app
