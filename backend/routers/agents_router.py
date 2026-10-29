@@ -11,6 +11,7 @@ import anthropic
 
 from ..agents.definitions import get_agents_list, get_agent
 from ..agents.skills import skill_for_message
+from ..agents.tools import TOOL_DEFINITIONS, TOOL_DEFINITIONS_OPENAI, execute_tool
 from ..config import settings
 from ..salesforce.client import SalesforceClient
 
@@ -351,6 +352,7 @@ class ChatMessage(BaseModel):
 class ChatRequest(BaseModel):
     messages: List[ChatMessage]
     org_context: bool = False
+    model: str = ""  # optional model override; falls back to settings default
 
 
 _SERVER_CALL_TYPES = {
@@ -962,6 +964,33 @@ async def model_info():
     return {"provider": "anthropic", "model": settings.ANTHROPIC_DEFAULT_SONNET_MODEL}
 
 
+@router.get("/agents/available-models")
+async def available_models():
+    """Returns selectable models for the active provider."""
+    llmgw_key = (
+        settings.LLMGW_API_KEY
+        or os.environ.get("LLMGW_API_KEY", "")
+        or _read_file_key(Path.home() / ".config/opencode/.llmgw-key")
+    )
+    if llmgw_key:
+        return {
+            "provider": "llmgw",
+            "active": settings.LLMGW_MODEL,
+            "models": [{"id": settings.LLMGW_MODEL, "label": settings.LLMGW_MODEL}],
+        }
+    return {
+        "provider": "anthropic",
+        "active": settings.ANTHROPIC_DEFAULT_SONNET_MODEL,
+        "models": [
+            {"id": "claude-opus-4-5-20250929",   "label": "Opus 4.5 — Most capable"},
+            {"id": "claude-sonnet-4-5-20250929",  "label": "Sonnet 4.5 — Balanced"},
+            {"id": "claude-haiku-4-5-20250929",   "label": "Haiku 4.5 — Fast"},
+            {"id": "claude-sonnet-4-7-20250219",  "label": "Sonnet 4.7"},
+            {"id": "claude-opus-4-0",             "label": "Opus 4.0"},
+        ],
+    }
+
+
 @router.get("/agents")
 async def list_agents() -> List[Dict[str, Any]]:
     return get_agents_list()
@@ -1041,8 +1070,9 @@ async def chat(agent_id: str, request: Request, body: ChatRequest):
                     base_url=settings.LLMGW_BASE_URL,
                 )
                 oai_messages = [{"role": "system", "content": system_prompt}] + messages
+                active_model = body.model or settings.LLMGW_MODEL
                 stream = await llmgw_client.chat.completions.create(
-                    model=settings.LLMGW_MODEL,
+                    model=active_model,
                     messages=oai_messages,
                     max_tokens=4096,
                     stream=True,
@@ -1065,9 +1095,10 @@ async def chat(agent_id: str, request: Request, body: ChatRequest):
                             headers[k.strip()] = v.strip()
                     if headers:
                         client_kwargs["default_headers"] = headers
+                active_model = body.model or settings.ANTHROPIC_DEFAULT_SONNET_MODEL
                 anth_client = anthropic.AsyncAnthropic(**client_kwargs)
                 async with anth_client.messages.stream(
-                    model=settings.ANTHROPIC_DEFAULT_SONNET_MODEL,
+                    model=active_model,
                     max_tokens=2048,
                     system=system_prompt,
                     messages=messages,
@@ -1087,4 +1118,146 @@ async def chat(agent_id: str, request: Request, body: ChatRequest):
             "Cache-Control": "no-cache",
             "X-Accel-Buffering": "no",
         },
+    )
+
+
+@router.post("/chat/tool/{agent_id}")
+async def chat_with_tools(agent_id: str, request: Request, body: ChatRequest):
+    """Agentic chat endpoint — Claude calls SF tools (query/create/describe) in a loop."""
+    agent = get_agent(agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+
+    access_token = request.session.get("access_token")
+    instance_url = request.session.get("instance_url")
+    if not access_token or not instance_url:
+        raise HTTPException(status_code=401, detail="Not authenticated — connect your Salesforce org first")
+
+    sf = SalesforceClient(access_token, instance_url)
+    system_prompt = agent["system_prompt"]
+    messages = [{"role": m.role, "content": m.content} for m in body.messages]
+
+    llmgw_key = (
+        settings.LLMGW_API_KEY
+        or os.environ.get("LLMGW_API_KEY", "")
+        or _read_file_key(Path.home() / ".config/opencode/.llmgw-key")
+    )
+
+    async def stream_response():
+        try:
+            loop_messages = list(messages)
+            max_iterations = 6
+
+            for _iteration in range(max_iterations):
+                if llmgw_key:
+                    # ── OpenAI-compatible (llmgw) tool-calling path ────────────
+                    from openai import AsyncOpenAI
+                    llmgw_client = AsyncOpenAI(api_key=llmgw_key, base_url=settings.LLMGW_BASE_URL)
+                    oai_messages = [{"role": "system", "content": system_prompt}] + loop_messages
+                    response = await llmgw_client.chat.completions.create(
+                        model=body.model or settings.LLMGW_MODEL,
+                        messages=oai_messages,
+                        tools=TOOL_DEFINITIONS_OPENAI,
+                        tool_choice="auto",
+                        max_tokens=4096,
+                    )
+                    choice = response.choices[0]
+                    finish_reason = choice.finish_reason
+                    msg = choice.message
+
+                    if finish_reason == "tool_calls" and msg.tool_calls:
+                        tool_results = []
+                        for tc in msg.tool_calls:
+                            fn = tc.function
+                            try:
+                                inputs = json.loads(fn.arguments)
+                            except Exception:
+                                inputs = {}
+                            yield "data: " + json.dumps({
+                                "tool_call": {"name": fn.name, "input": inputs}
+                            }) + "\n\n"
+                            result = await execute_tool(fn.name, inputs, sf)
+                            tool_results.append({
+                                "role": "tool",
+                                "tool_call_id": tc.id,
+                                "content": json.dumps(result),
+                            })
+
+                        loop_messages.append({"role": "assistant", "tool_calls": [
+                            {"id": tc.id, "type": "function", "function": {"name": tc.function.name, "arguments": tc.function.arguments}}
+                            for tc in msg.tool_calls
+                        ]})
+                        loop_messages.extend(tool_results)
+
+                    else:
+                        text = msg.content or ""
+                        chunk_size = 20
+                        for i in range(0, len(text), chunk_size):
+                            yield "data: " + json.dumps({"text": text[i:i + chunk_size]}) + "\n\n"
+                        break
+
+                else:
+                    # ── Anthropic tool-calling path ────────────────────────────
+                    client_kwargs: dict = {"api_key": settings.ANTHROPIC_API_KEY or "placeholder"}
+                    if settings.ANTHROPIC_BASE_URL:
+                        client_kwargs["base_url"] = settings.ANTHROPIC_BASE_URL
+                    if settings.ANTHROPIC_CUSTOM_HEADERS:
+                        hdrs: dict = {}
+                        for part in settings.ANTHROPIC_CUSTOM_HEADERS.split(","):
+                            part = part.strip()
+                            if ": " in part:
+                                k, v = part.split(": ", 1)
+                                hdrs[k.strip()] = v.strip()
+                        if hdrs:
+                            client_kwargs["default_headers"] = hdrs
+
+                    anth_client = anthropic.AsyncAnthropic(**client_kwargs)
+                    response = await anth_client.messages.create(
+                        model=body.model or settings.ANTHROPIC_DEFAULT_SONNET_MODEL,
+                        max_tokens=4096,
+                        system=system_prompt,
+                        tools=TOOL_DEFINITIONS,
+                        messages=loop_messages,
+                    )
+
+                    if response.stop_reason == "tool_use":
+                        tool_results = []
+                        assistant_content = []
+
+                        for block in response.content:
+                            assistant_content.append(block)
+                            if block.type == "tool_use":
+                                yield "data: " + json.dumps({
+                                    "tool_call": {"name": block.name, "input": block.input}
+                                }) + "\n\n"
+                                result = await execute_tool(block.name, block.input, sf)
+                                tool_results.append({
+                                    "type": "tool_result",
+                                    "tool_use_id": block.id,
+                                    "content": json.dumps(result),
+                                })
+
+                        loop_messages.append({"role": "assistant", "content": assistant_content})
+                        loop_messages.append({"role": "user", "content": tool_results})
+
+                    else:
+                        final_text = ""
+                        for block in response.content:
+                            if hasattr(block, "text"):
+                                final_text += block.text
+                        chunk_size = 20
+                        for i in range(0, len(final_text), chunk_size):
+                            yield "data: " + json.dumps({"text": final_text[i:i + chunk_size]}) + "\n\n"
+                        break
+
+            yield "data: [DONE]\n\n"
+
+        except Exception as e:
+            yield "data: " + json.dumps({"error": str(e)}) + "\n\n"
+            yield "data: [DONE]\n\n"
+
+    return StreamingResponse(
+        stream_response(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )

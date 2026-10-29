@@ -84,6 +84,25 @@ const NAV_ITEMS = [
     ),
   },
   {
+    id: 'crm_agent', label: 'CRM Agent',
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    ),
+  },
+  {
+    id: 'rc_product_agent', label: 'RC Builder',
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+        <rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="1.8"/>
+        <rect x="14" y="3" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="1.8"/>
+        <rect x="3" y="14" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="1.8"/>
+        <path d="M17.5 14v6M14.5 17h6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+      </svg>
+    ),
+  },
+  {
     id: 'compare', label: 'Compare Orgs',
     icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none">

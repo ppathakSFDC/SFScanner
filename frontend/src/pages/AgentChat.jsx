@@ -49,6 +49,32 @@ const s = {
     display: 'flex', alignItems: 'center', gap: 5,
     transition: 'border-color 0.15s',
   },
+  modelSelect: {
+    background: 'var(--nav-surface, #1e2535)',
+    border: `1px solid ${BORDER}`,
+    borderRadius: 8,
+    color: TEXT_MID,
+    fontSize: 12,
+    padding: '5px 10px',
+    cursor: 'pointer',
+    outline: 'none',
+    appearance: 'none',
+    WebkitAppearance: 'none',
+    paddingRight: 24,
+    maxWidth: 180,
+  },
+  modelWrap: {
+    position: 'relative',
+    display: 'flex',
+    alignItems: 'center',
+  },
+  modelCaret: {
+    position: 'absolute',
+    right: 8,
+    pointerEvents: 'none',
+    color: TEXT_DIM,
+    fontSize: 10,
+  },
   badge: {
     fontSize: 11,
     color: '#86efac',
@@ -173,13 +199,34 @@ const s = {
   }),
 }
 
+const TOOL_AGENTS = new Set(['crm_agent', 'rc_product_agent'])
+
+const STORAGE_KEY = 'sf-selected-model'
+
 export default function AgentChat({ agent, auth, onBack, onConnectOrg }) {
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
   const [streaming, setStreaming] = useState(false)
   const [showKeyModal, setShowKeyModal] = useState(false)
+  const [availableModels, setAvailableModels] = useState([])
+  const [selectedModel, setSelectedModel] = useState(() => localStorage.getItem(STORAGE_KEY) || '')
   const messagesEndRef = useRef(null)
   const textareaRef = useRef(null)
+
+  useEffect(() => {
+    fetch('/agents/available-models')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!data) return
+        setAvailableModels(data.models || [])
+        if (!selectedModel) setSelectedModel(data.active || '')
+      })
+      .catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    if (selectedModel) localStorage.setItem(STORAGE_KEY, selectedModel)
+  }, [selectedModel])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -199,13 +246,15 @@ export default function AgentChat({ agent, auth, onBack, onConnectOrg }) {
     setMessages(prev => [...prev, assistantMsg])
 
     try {
-      const res = await fetch('/chat/' + agent.id, {
+      const chatPath = TOOL_AGENTS.has(agent.id) ? '/chat/tool/' : '/chat/'
+      const res = await fetch(chatPath + agent.id, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
           messages: newMessages,
           org_context: !!auth,
+          model: selectedModel || undefined,
         }),
       })
 
@@ -236,7 +285,16 @@ export default function AgentChat({ agent, auth, onBack, onConnectOrg }) {
           if (raw === '[DONE]') break
           try {
             const parsed = JSON.parse(raw)
-            if (parsed.text) {
+            if (parsed.tool_call) {
+              const label = `🔧 ${parsed.tool_call.name}${parsed.tool_call.input?.soql ? ': ' + parsed.tool_call.input.soql.slice(0, 80) + '…' : parsed.tool_call.input?.object_name ? ': ' + parsed.tool_call.input.object_name : ''}`
+              setMessages(prev => {
+                const updated = [...prev]
+                const last = updated[updated.length - 1]
+                const calls = last.toolCalls ? [...last.toolCalls, label] : [label]
+                updated[updated.length - 1] = { ...last, toolCalls: calls }
+                return updated
+              })
+            } else if (parsed.text) {
               setMessages(prev => {
                 const updated = [...prev]
                 updated[updated.length - 1] = { ...updated[updated.length - 1], content: updated[updated.length - 1].content + parsed.text }
@@ -286,6 +344,21 @@ export default function AgentChat({ agent, auth, onBack, onConnectOrg }) {
             Org connected
           </div>
         )}
+        {availableModels.length > 1 && (
+          <div style={s.modelWrap}>
+            <select
+              style={s.modelSelect}
+              value={selectedModel}
+              onChange={e => setSelectedModel(e.target.value)}
+              title="Switch AI model"
+            >
+              {availableModels.map(m => (
+                <option key={m.id} value={m.id}>{m.label}</option>
+              ))}
+            </select>
+            <span style={s.modelCaret}>▾</span>
+          </div>
+        )}
         <button style={s.keyBtn} onClick={() => setShowKeyModal(true)}>
           🔑 API Key
         </button>
@@ -310,6 +383,20 @@ export default function AgentChat({ agent, auth, onBack, onConnectOrg }) {
         )}
         {messages.map((msg, i) => (
           <div key={i} style={s.bubble(msg.role, msg.isError)}>
+            {msg.toolCalls && msg.toolCalls.length > 0 && (
+              <div style={{ marginBottom: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {msg.toolCalls.map((tc, j) => (
+                  <div key={j} style={{
+                    fontSize: 11, color: '#67e8f9',
+                    background: 'rgba(6,182,212,0.08)',
+                    border: '1px solid rgba(6,182,212,0.2)',
+                    borderRadius: 6, padding: '3px 8px',
+                    fontFamily: 'monospace', whiteSpace: 'nowrap',
+                    overflow: 'hidden', textOverflow: 'ellipsis',
+                  }}>{tc}</div>
+                ))}
+              </div>
+            )}
             {msg.content || (streaming && i === messages.length - 1 ? (
               <div style={s.typing}>
                 <div style={{ ...s.typingDot, animationDelay: '0ms' }} />

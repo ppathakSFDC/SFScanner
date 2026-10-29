@@ -186,6 +186,24 @@ export default function App() {
                 />
               )}
 
+              {page === 'crm_agent' && (
+                <AgentChat
+                  agent={{ id: 'crm_agent', icon: '💬', name: 'CRM Assistant' }}
+                  auth={auth}
+                  onBack={() => handleNavigate('agents')}
+                  onConnectOrg={() => { setPage('connections'); setSelectedAgent(null) }}
+                />
+              )}
+
+              {page === 'rc_product_agent' && (
+                <AgentChat
+                  agent={{ id: 'rc_product_agent', icon: '🏗️', name: 'Revenue Cloud Product Builder' }}
+                  auth={auth}
+                  onBack={() => handleNavigate('agents')}
+                  onConnectOrg={() => { setPage('connections'); setSelectedAgent(null) }}
+                />
+              )}
+
               {page === 'security' && (
                 <SecurityPage auth={auth} onNavigate={handleNavigate} />
               )}

@@ -673,3 +673,50 @@ class SalesforceClient:
             )
             resp.raise_for_status()
             return resp.json()
+
+    async def create(self, object_name: str, fields: dict) -> dict:
+        async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
+            resp = await client.post(
+                f"{self.instance_url}/services/data/{self.api_version}/sobjects/{object_name}/",
+                headers=self.headers,
+                json=fields,
+            )
+            if not resp.is_success:
+                try:
+                    detail = resp.json()
+                except Exception:
+                    detail = resp.text
+                raise httpx.HTTPStatusError(
+                    f"SF {resp.status_code}: {detail}",
+                    request=resp.request,
+                    response=resp,
+                )
+            return resp.json()
+
+    async def tooling_create(self, object_name: str, fields: dict) -> dict:
+        async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
+            resp = await client.post(
+                f"{self.instance_url}/services/data/{self.api_version}/tooling/sobjects/{object_name}/",
+                headers=self.headers,
+                json=fields,
+            )
+            if not resp.is_success:
+                try:
+                    detail = resp.json()
+                except Exception:
+                    detail = resp.text
+                raise httpx.HTTPStatusError(
+                    f"SF Tooling {resp.status_code}: {detail}",
+                    request=resp.request,
+                    response=resp,
+                )
+            return resp.json()
+
+    async def update(self, object_name: str, record_id: str, fields: dict) -> None:
+        async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
+            resp = await client.patch(
+                f"{self.instance_url}/services/data/{self.api_version}/sobjects/{object_name}/{record_id}",
+                headers=self.headers,
+                json=fields,
+            )
+            resp.raise_for_status()

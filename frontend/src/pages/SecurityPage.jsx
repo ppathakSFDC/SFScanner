@@ -245,9 +245,9 @@ export default function SecurityPage({ auth, onNavigate }) {
                   <div key={c.rule} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ fontSize: 14, color: fail ? C.red : C.green }}>{fail ? '✕' : '✓'}</span>
                     <span style={{ fontSize: 12, color: fail ? C.textMid : C.text }}>{c.label}</span>
-                    <span style={{ fontSize: 10, color: C.textLo,
-                      background: 'rgba(148,163,184,0.08)', borderRadius: 4, padding: '1px 5px',
-                      flexShrink: 0 }}>
+                    <span style={{ fontSize: 10, color: C.cyan,
+                      background: 'rgba(6,182,212,0.1)', border: '1px solid rgba(6,182,212,0.25)',
+                      borderRadius: 4, padding: '1px 5px', flexShrink: 0 }}>
                       {c.category}
                     </span>
                   </div>
