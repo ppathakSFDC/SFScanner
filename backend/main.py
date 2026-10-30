@@ -19,6 +19,7 @@ from .routers.compare_router import router as compare_router
 from .routers.security_router import router as security_router
 from .routers.mcp_router import router as mcp_router
 from .routers.assessment_router import router as assessment_router
+from .routers.assessment_router import router as assessment_router
 
 app = FastAPI(title="SF Scanner", version="1.0.0")
 
@@ -48,6 +49,7 @@ app.include_router(gdpr_router)
 app.include_router(compare_router)
 app.include_router(security_router)
 app.include_router(mcp_router)
+app.include_router(assessment_router)
 app.include_router(assessment_router)
 
 

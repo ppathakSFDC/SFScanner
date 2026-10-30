@@ -19,6 +19,7 @@ import RecordsListPage from './pages/RecordsListPage.jsx'
 import GdprPage from './pages/GdprPage.jsx'
 import SecurityPage from './pages/SecurityPage.jsx'
 import OrgCompare from './pages/OrgCompare.jsx'
+import AssessmentPage from './pages/AssessmentPage.jsx'
 
 const SIDEBAR_W = 190
 const HEADER_H  = 52
@@ -225,6 +226,13 @@ export default function App() {
 
               {page === 'compare' && (
                 <OrgCompare onNavigate={handleNavigate} />
+              )}
+
+              {page === 'assessment' && (
+                <AssessmentPage
+                  auth={auth}
+                  onConnectOrg={() => { setPage('connections'); setSelectedAgent(null) }}
+                />
               )}
           </div>
         </div>
