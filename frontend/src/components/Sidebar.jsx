@@ -35,6 +35,17 @@ const NAV_ITEMS = [
     ),
   },
   {
+    id: 'assessment', label: 'Assessment',
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+        <rect x="4" y="2" width="16" height="20" rx="2" stroke="currentColor" strokeWidth="1.8"/>
+        <path d="M8 7h8M8 11h8M8 15h5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+        <circle cx="18" cy="18" r="4" fill="none" stroke="currentColor" strokeWidth="1.8"/>
+        <path d="M16.5 18l1 1 2-2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    ),
+  },
+  {
     id: 'migrate', label: 'Migrate',
     icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none">

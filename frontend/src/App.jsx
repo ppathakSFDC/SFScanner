@@ -12,6 +12,7 @@ import OrgScan from './pages/OrgScan.jsx'
 import ScannerPage from './pages/ScannerPage.jsx'
 import Login from './pages/Login.jsx'
 import MigratePage from './pages/MigratePage.jsx'
+import AssessmentPage from './pages/AssessmentPage.jsx'
 import InfoPage from './pages/InfoPage.jsx'
 import ObjectDetailPage from './pages/ObjectDetailPage.jsx'
 import RecordsListPage from './pages/RecordsListPage.jsx'
@@ -200,6 +201,13 @@ export default function App() {
                   agent={{ id: 'rc_product_agent', icon: '🏗️', name: 'Revenue Cloud Product Builder' }}
                   auth={auth}
                   onBack={() => handleNavigate('agents')}
+                  onConnectOrg={() => { setPage('connections'); setSelectedAgent(null) }}
+                />
+              )}
+
+              {page === 'assessment' && (
+                <AssessmentPage
+                  auth={auth}
                   onConnectOrg={() => { setPage('connections'); setSelectedAgent(null) }}
                 />
               )}
